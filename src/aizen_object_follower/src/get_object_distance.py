@@ -66,35 +66,28 @@ class GetObjectDistance(Node):
         self.range_max = msg.range_max
 
         # Define the valid range for the laser scan
-        self.spec_range_min = 0.16
-        self.spec_range_max = 80
-
-        # Ensure the range values are within the specified limits
-        if self.range_max > self.spec_range_max:
-            self.range_max = self.spec_range_max
-        if self.range_min < self.spec_range_min:
-            self.range_min = self.spec_range_min
-
-        # Filter out invalid laser scan ranges
-        filtered_ranges = [r for r in self.laser_ranges if r < self.range_max and r > self.range_min]
+        self.spec_range_min = max(0.16, self.range_min)
+        self.spec_range_max = min(80, self.range_max)
 
         # Calculate the angle of the target in radians
         fov = 62.2 * (np.pi / 180)  # Convert FOV to radians
         img_width = 320  # Image width in pixels
         angle = (self.target_img_x - (img_width / 2)) * (fov / img_width)  # Angle in radians
-        angle = angle % (2 * np.pi)  # Normalize angle to [0, 2π]
+        angle = (angle - self.angle_min) % (2 * np.pi) + self.angle_min  # Normalize angle to [0, 2π]
         self.target_angle = angle
 
         # Calculate the index of the laser scan range corresponding to the target angle
         index = int((angle - self.angle_min) / self.angle_increment)
 
         # Get the distance to the target from the laser scan ranges
-        if not 0 <= index < len(filtered_ranges):
+        if not 0 <= index < len(self.laser_ranges):
+            self.get_logger().warn(f"Calculated index {index} is out of bounds for laser ranges of length {len(self.laser_ranges)}.")
             return
 
         window = self.laser_ranges[max(0, index-2):index+3]
         valid = [r for r in window if self.range_min < r < self.range_max]
         if not valid:
+            self.get_logger().warn("No valid laser scan ranges found in the window around the target angle.")
             return  # No valid ranges in the window
 
         self.target_distance = float(np.mean(valid))
@@ -103,7 +96,7 @@ class GetObjectDistance(Node):
 
         # Publish the target distance to the distance topic
         distance_msg = Float32MultiArray()
-        distance_msg.data = [self.target_angle, self.target_distance]
+        distance_msg.data = [float(self.target_angle), float(self.target_distance)]
         self.distance_publisher.publish(distance_msg)
 
 def main(args=None):
