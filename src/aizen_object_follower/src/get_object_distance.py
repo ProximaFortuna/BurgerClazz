@@ -94,8 +94,17 @@ class GetObjectDistance(Node):
             return  # No valid ranges in the window
 
         raw = float(np.percentile(valid, 25))  # Use the 25th percentile to reduce the effect of outliers
-        alpha = 0.3
 
+        if abs(raw - self.target_distance) > 0.5:  # If the new distance is significantly different, reset the target distance
+            self.jump_count += 1
+            if self.jump_count < 5:
+                self.get_logger().warn(f"Significant jump in distance detected: {raw:.2f} meters. Ignoring this reading.")
+                return
+            else:
+                self.get_logger().warn(f"Significant jump in distance detected: {raw:.2f} meters. Accepting this reading after {self.jump_count} consecutive jumps.")
+                self.jump_count = 0  # Reset jump count after accepting the reading
+
+        alpha = 0.3
         if self.target_distance is None:
             self.target_distance = raw
         else:
