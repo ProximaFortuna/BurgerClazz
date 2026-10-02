@@ -4,7 +4,6 @@
 
 import math
 
-import numpy as np
 import rclpy
 from rclpy.node import Node
 
@@ -22,30 +21,29 @@ class ChaseObject(Node):
         # --------------------------------
 
         # Desired distance from the object: 1 foot
-        self.desired_distance = 0.6 # meters
+        self.desired_distance = 0.3048  # meters
+
+        # If heading error is greater than 30 degrees,
+        # stop translating and focus entirely on rotation.
+        self.theta_threshold = math.radians(30.0)
 
         # Proportional gains
         # These are starting values and WILL need tuning.
-        self.kp_theta = 1.4
-        self.kp_dist = 0.6
+        self.kp_theta = 1.0
+        self.kp_dist = 0.5
 
+        # Velocity saturation
         self.max_linear_velocity = 0.22   # m/s
         self.max_angular_velocity = 1.0   # rad/s
-
-        self.angle_deadband = 0.1  # radians
-        self.distance_deadband = 0.05  # meters
-        self.drive_angle_limit = 0.2  # radians
-
-        self.timeout = 1
 
         # --------------------------------
         # Latest object measurement
         # --------------------------------
 
-        self.object_angle = None
-        self.object_distance = None
+        self.object_angle = 0.0
+        self.object_distance = 0.0
 
-        self.last_msg_time = None
+        self.have_measurement = False
 
         # --------------------------------
         # ROS interfaces
@@ -91,43 +89,105 @@ class ChaseObject(Node):
         self.object_angle = msg.data[0]
         self.object_distance = msg.data[1]
 
-        self.last_msg_time = self.get_clock().now()
-
-    def stop(self):
-        """
-        Stops the robot by publishing a zero-velocity command.
-        """
-        cmd = Twist()
-        self.cmd_vel_pub.publish(cmd)
+        self.have_measurement = True
 
     def control_callback(self):
         """
         Runs the actual chasedown controller at 20 Hz.
         """
 
-        now = self.get_clock().now()
+        cmd = Twist()
 
         # Do not move until at least one valid measurement
         # has been received.
-        if self.last_msg_time is None or (now - self.last_msg_time).nanoseconds / 1e9 > self.timeout:
-            self.stop()
+        if not self.have_measurement:
+            self.cmd_vel_pub.publish(cmd)
             return
 
         # --------------------------------
         # Compute errors
         # --------------------------------
 
+        # Desired heading is straight ahead: 0 radians.
+        #
+        # Partner's convention:
+        # positive object angle = object is to the right
+        #
+        # Therefore:
+        # object right  -> positive theta_obj
+        # e_theta       -> negative
+        # omega         -> negative
+        # robot rotates clockwise/right
         e_theta = self.object_angle
+
+        # Positive distance error means the object is too far away.
+        # Negative distance error means the object is too close.
         e_dist = self.object_distance - self.desired_distance
 
-        cmd = Twist()
+        # --------------------------------
+        # Angular proportional controller
+        # --------------------------------
 
-        if abs(e_theta) > self.angle_deadband:
-            cmd.angular.z = float(np.clip(self.kp_theta * e_theta, -self.max_angular_velocity, self.max_angular_velocity))
+        omega_raw = self.kp_theta * e_theta
 
-        if abs(e_dist) > self.distance_deadband and abs(e_theta) <= self.drive_angle_limit:
-            lin = float(np.clip(self.kp_dist * e_dist, -self.max_linear_velocity, self.max_linear_velocity))
-            cmd.linear.x = lin * max(0.0, np.cos(e_theta))  # Reduce forward speed when turning
+        # --------------------------------
+        # Linear proportional controller
+        # --------------------------------
+
+        if abs(e_theta) > self.theta_threshold:
+            # Object is too far off-center.
+            # Rotate first before translating.
+            v_raw = 0.0
+
+        else:
+            # Heading-dependent forward velocity scaling.
+            #
+            # Perfect heading:
+            # e_theta = 0  -> g_theta = 1
+            #
+            # At 30-degree threshold:
+            # |e_theta| = theta_threshold -> g_theta = 0
+            #
+            # The squared relationship lets the robot retain
+            # more forward speed for smaller heading errors,
+            # then slows it aggressively near the threshold.
+            g_theta = 1.0 - (
+                abs(e_theta) / self.theta_threshold
+            ) ** 2
+
+            # Defensive clamp to guarantee:
+            # 0 <= g_theta <= 1
+            g_theta = max(
+                0.0,
+                min(1.0, g_theta)
+            )
+
+            v_raw = (
+                self.kp_dist
+                * e_dist
+                * g_theta
+            )
+
+        # --------------------------------
+        # Velocity saturation
+        # --------------------------------
+
+        v_cmd = max(
+            -self.max_linear_velocity,
+            min(self.max_linear_velocity, v_raw)
+        )
+
+        omega_cmd = max(
+            -self.max_angular_velocity,
+            min(self.max_angular_velocity, omega_raw)
+        )
+
+        # --------------------------------
+        # Build and publish Twist command
+        # --------------------------------
+
+        cmd.linear.x = v_cmd
+        cmd.angular.z = omega_cmd
 
         self.cmd_vel_pub.publish(cmd)
 
