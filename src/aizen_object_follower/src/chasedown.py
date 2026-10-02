@@ -22,12 +22,12 @@ class ChaseObject(Node):
         # --------------------------------
 
         # Desired distance from the object: 1 foot
-        self.desired_distance = 0.3048  # meters
+        self.desired_distance = 0.6  # meters
 
         # Proportional gains
         # These are starting values and WILL need tuning.
         self.kp_theta = -2
-        self.kp_dist = 0.5
+        self.kp_dist = 0.8
 
         self.max_linear_velocity = 0.22   # m/s
         self.max_angular_velocity = 1.0   # rad/s
@@ -118,7 +118,6 @@ class ChaseObject(Node):
         # --------------------------------
 
         e_theta = -self.object_angle
-        e_theta = (e_theta + np.pi) % (2 * np.pi) - np.pi  # Wrap to [-pi, pi]
         e_dist = self.object_distance - self.desired_distance
 
         cmd = Twist()
