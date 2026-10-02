@@ -86,11 +86,7 @@ class GetObjectDistance(Node):
         index = int(round((angle - self.angle_min) / self.angle_increment)) % n
 
         # Get the distance to the target from the laser scan ranges
-        if not 0 <= index < len(self.laser_ranges):
-            self.get_logger().warn(f"Calculated index {index} is out of bounds for laser ranges of length {len(self.laser_ranges)}.")
-            return
-
-        window = self.laser_ranges[max(0, index-2):index+3]
+        window = self.laser_ranges[max(0, index-2):min(n, index+3)]
         valid = [r for r in window if self.range_min < r < self.range_max]
         if not valid:
             self.get_logger().warn("No valid laser scan ranges found in the window around the target angle.")
