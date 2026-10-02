@@ -74,11 +74,16 @@ class GetObjectDistance(Node):
         fov = 62.2 * (np.pi / 180)  # Convert FOV to radians
         img_width = 320  # Image width in pixels
         angle = (self.target_img_x - (img_width / 2)) * (fov / img_width)  # Angle in radians
-        angle = (angle - self.angle_min) % (2 * np.pi) + self.angle_min  # Normalize angle to [0, 2π]
         self.target_angle = angle
+        angle = (angle - self.angle_min) % (2 * np.pi) + self.angle_min  # Normalize angle to [0, 2π] for indexing
 
         # Calculate the index of the laser scan range corresponding to the target angle
-        index = int((angle - self.angle_min) / self.angle_increment)
+        n = len(self.laser_ranges)
+        if n == 0:
+            self.get_logger().warn("Laser scan ranges are empty.")
+            return
+
+        index = int(round((angle - self.angle_min) / self.angle_increment)) % n
 
         # Get the distance to the target from the laser scan ranges
         if not 0 <= index < len(self.laser_ranges):
