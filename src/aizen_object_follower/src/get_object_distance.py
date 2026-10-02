@@ -22,6 +22,7 @@ class GetObjectDistance(Node):
         self.target_img_y = None
         self.target_angle = None
         self.target_distance = None
+        self.jump_count = 0
 
         # Create a subscriber for the centroid topic
         self.centroid_subscriber = self.create_subscription(
