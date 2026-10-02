@@ -117,7 +117,7 @@ class ChaseObject(Node):
         # Compute errors
         # --------------------------------
 
-        e_theta = self.object_angle
+        e_theta = -self.object_angle
         e_theta = (e_theta + np.pi) % (2 * np.pi) - np.pi  # Wrap to [-pi, pi]
         e_dist = self.object_distance - self.desired_distance
 
