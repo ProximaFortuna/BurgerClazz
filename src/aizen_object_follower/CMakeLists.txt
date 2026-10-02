@@ -18,9 +18,19 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
-  src/rotate_robot.py
+  src/chasedown.py
   DESTINATION lib/${PROJECT_NAME}
-  RENAME rotate_robot
+  RENAME chasedown
+)
+
+install(PROGRAMS
+  src/get_object_distance.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME get_object_distance
+)
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 if(BUILD_TESTING)
