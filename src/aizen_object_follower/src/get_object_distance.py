@@ -87,30 +87,14 @@ class GetObjectDistance(Node):
         index = int(round((angle - self.angle_min) / self.angle_increment)) % n
 
         # Get the distance to the target from the laser scan ranges
-        half = max(2, int(np.deg2rad(1) / self.angle_increment))  # Half window size for averaging
+        half = max(2, int(np.deg2rad(2) / self.angle_increment))  # Half window size for averaging
         window = [self.laser_ranges[(index + k) % n] for k in range(-half, half + 1)]  # Get a window of ranges around the target index 
         valid = [r for r in window if self.range_min < r < self.range_max]
         if not valid:
             self.get_logger().warn("No valid laser scan ranges found in the window around the target angle.")
             return  # No valid ranges in the window
-        self.target_distance = float(np.mean(valid))  # Use the mean of valid ranges as the target distance
 
-        # raw = float(np.percentile(valid, 25))  # Use the 25th percentile to reduce the effect of outliers
-
-        # alpha = 0.3
-        # if self.target_distance is None:
-        #     self.target_distance = raw
-        # else:
-        #     # Spike prevention
-        #     if abs(raw - self.target_distance) > 0.5:  # If the new distance is significantly different, don't publish
-        #         self.jump_count += 1
-        #         if self.jump_count < 5:
-        #             self.get_logger().warn(f"Significant jump in distance detected: {raw:.2f} meters. Ignoring this reading.")
-        #             return
-        #         else:
-        #             self.get_logger().warn(f"Significant jump in distance detected: {raw:.2f} meters. Accepting this reading after {self.jump_count} consecutive jumps.")
-        #             self.jump_count = 0  # Reset jump count after accepting the reading
-        #     self.target_distance = alpha * raw + (1 - alpha) * self.target_distance  # Exponential moving average
+        self.target_distance = float(np.percentile(valid, 25))  # Use the 25th percentile to reduce the effect of outliers
 
         # Log the target distance
         self.get_logger().info(f"Target distance: {self.target_distance:.2f} meters")
