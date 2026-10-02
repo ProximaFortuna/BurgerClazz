@@ -70,6 +70,7 @@ class GetObjectDistance(Node):
 
         # Calculate the angle of the target in radians
         angle = (self.target_img_x - 160) * (np.pi / 320)
+        self.target.angle = angle
 
         # Calculate the index of the laser scan range corresponding to the target angle
         index = int((angle - self.angle_min) / self.angle_increment)
@@ -82,7 +83,7 @@ class GetObjectDistance(Node):
 
         # Publish the target distance to the distance topic
         distance_msg = Float32MultiArray()
-        distance_msg.data = [self.target_img_x, self.target_distance]
+        distance_msg.data = [self.target.angle, self.target_distance]
         self.distance_publisher.publish(distance_msg)
 
 def main(args=None):
