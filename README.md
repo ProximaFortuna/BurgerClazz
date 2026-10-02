@@ -25,8 +25,3 @@ To run code on the robot,
 
 TODO
 
-make rotate_robot (script that subscribes to the centroid topic (/tracking/centroid) and publishes a twist to /cmd_vel)
-make a launch file
-
-Maybe add back the past center processing stuff? I took it out because I was having trouble setting it up with the formatting needed to write it as a class but could probably figure it out.
-This is a low priority tho.
