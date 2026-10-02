@@ -34,7 +34,7 @@ class ChaseObject(Node):
 
         self.angle_deadband = 0.1  # radians
         self.distance_deadband = 0.05  # meters
-        self.drive_angle_limit = 0.5  # radians
+        self.drive_angle_limit = 0.2  # radians
 
         self.timeout = 1
 
