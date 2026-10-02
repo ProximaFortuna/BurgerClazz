@@ -7,10 +7,10 @@ from rclpy.node import Node
 from geometry_msgs.msg import Point, Twist
 
 
-class RotateRobot(Node):
+class chasedown(Node):
 
     def __init__(self):
-        super().__init__('rotate_robot')
+        super().__init__('chasedown')
 
         # Camera width is 320 px, so center is x = 160
         self.image_center_x = 160.0
@@ -34,7 +34,7 @@ class RotateRobot(Node):
             10
         )
 
-        self.get_logger().info("RotateRobot node has been started.")
+        self.get_logger().info("chasedown node has been started.")
 
     def centroid_callback(self, msg):
         error = msg.x - self.image_center_x
@@ -62,7 +62,7 @@ class RotateRobot(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    node = RotateRobot()
+    node = chasedown()
 
     try:
         rclpy.spin(node)
