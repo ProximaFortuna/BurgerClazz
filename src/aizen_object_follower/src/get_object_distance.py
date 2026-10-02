@@ -17,6 +17,11 @@ class GetObjectDistance(Node):
     def __init__(self):
         super().__init__('get_object_distance')
 
+        self.target_img_x = None
+        self.target_img_y = None
+        self.target_angle = None
+        self.target_distance = None
+
         # Create a subscriber for the centroid topic
         self.centroid_subscriber = self.create_subscription(
             Point,
@@ -47,6 +52,11 @@ class GetObjectDistance(Node):
         self.target_img_y = msg.y
 
     def laser_callback(self, msg):
+
+        if self.target_img_x is None:
+            self.get_logger().warn("No target centroid received yet.")
+            return
+
         # Store the laser scan values from the message
         self.laser_ranges = msg.ranges
         self.angle_min = msg.angle_min
@@ -56,28 +66,38 @@ class GetObjectDistance(Node):
         self.range_max = msg.range_max
 
         # Define the valid range for the laser scan
-        self.spec_range.min = 0.16
-        self.spec_range.max = 80
+        self.spec_range_min = 0.16
+        self.spec_range_max = 80
 
         # Ensure the range values are within the specified limits
-        if self.range_max > self.spec_range.max:
-            self.range_max = self.spec_range.max
-        if self.range_min < self.spec_range.min:
-            self.range_min = self.spec_range.min
+        if self.range_max > self.spec_range_max:
+            self.range_max = self.spec_range_max
+        if self.range_min < self.spec_range_min:
+            self.range_min = self.spec_range_min
 
         # Filter out invalid laser scan ranges
         filtered_ranges = [r for r in self.laser_ranges if r < self.range_max and r > self.range_min]
 
         # Calculate the angle of the target in radians
-        angle = (self.target_img_x - 160) * (np.pi / 320)
+        fov = 62.2 * (np.pi / 180)  # Convert FOV to radians
+        img_width = 320  # Image width in pixels
+        angle = (self.target_img_x - (img_width / 2)) * (fov / img_width)  # Angle in radians
+        angle = angle % (2 * np.pi)  # Normalize angle to [0, 2π]
         self.target_angle = angle
 
         # Calculate the index of the laser scan range corresponding to the target angle
         index = int((angle - self.angle_min) / self.angle_increment)
 
         # Get the distance to the target from the laser scan ranges
-        if 0 <= index < len(filtered_ranges):
-            self.target_distance = np.mean(filtered_ranges[index-2:index+3])  # Average over a small range to reduce noise
+        if not 0 <= index < len(filtered_ranges):
+            return
+
+        window = self.laser_ranges[max(0, index-2):index+3]
+        valid = [r for r in window if self.range_min < r < self.range_max]
+        if not valid:
+            return  # No valid ranges in the window
+
+        self.target_distance = float(np.mean(valid))
         # Log the target distance
         self.get_logger().info(f"Target distance: {self.target_distance:.2f} meters")
 
