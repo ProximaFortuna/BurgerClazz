@@ -21,7 +21,7 @@ class ChaseObject(Node):
         # --------------------------------
 
         # Desired distance from the object: 1 foot
-        self.desired_distance = 0.3048  # meters
+        self.desired_distance = 0.5  # meters
 
         # If heading error is greater than 30 degrees,
         # stop translating and focus entirely on rotation.
@@ -29,8 +29,8 @@ class ChaseObject(Node):
 
         # Proportional gains
         # These are starting values and WILL need tuning.
-        self.kp_theta = 1.0
-        self.kp_dist = 0.5
+        self.kp_theta = 2.0
+        self.kp_dist = 1
 
         # Velocity saturation
         self.max_linear_velocity = 0.22   # m/s
