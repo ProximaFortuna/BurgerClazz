@@ -117,7 +117,7 @@ class ChaseObject(Node):
         # Compute errors
         # --------------------------------
 
-        e_theta = -self.object_angle
+        e_theta = self.object_angle
         e_dist = self.object_distance - self.desired_distance
 
         cmd = Twist()

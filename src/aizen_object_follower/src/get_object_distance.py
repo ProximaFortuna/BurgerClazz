@@ -74,8 +74,9 @@ class GetObjectDistance(Node):
         # Calculate the angle of the target in radians
         fov = 62.2 * (np.pi / 180)  # Convert FOV to radians
         img_width = 320  # Image width in pixels
-        angle = (self.target_img_x - (img_width / 2)) * (fov / img_width)  # Angle in radians
-        self.target_angle = angle
+        fx = (img_width / 2) / np.tan(fov / 2)  # Focal length in pixels
+        angle = -np.arctan((self.target_img_x - img_width / 2) / fx)  # Angle in radians
+        self.target_angle = float(angle)
         angle = (angle - self.angle_min) % (2 * np.pi) + self.angle_min  # Normalize angle to [0, 2π] for indexing
 
         # Calculate the index of the laser scan range corresponding to the target angle
@@ -87,7 +88,7 @@ class GetObjectDistance(Node):
         index = int(round((angle - self.angle_min) / self.angle_increment)) % n
 
         # Get the distance to the target from the laser scan ranges
-        half = max(2, int(np.deg2rad(2) / self.angle_increment))  # Half window size for averaging
+        half = max(2, int(np.deg2rad(5) / self.angle_increment))  # Half window size for averaging
         window = [self.laser_ranges[(index + k) % n] for k in range(-half, half + 1)]  # Get a window of ranges around the target index 
         valid = [r for r in window if self.range_min < r < self.range_max]
         if not valid:
