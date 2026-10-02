@@ -16,33 +16,29 @@ class GetObjectDistance(Node):
 
     def __init__(self):
         super().__init__('get_object_distance')
-    
+
+        # Create a subscriber for the centroid topic
         self.centroid_subscriber = self.create_subscription(
-            Float32MultiArray,
+            Point,
             '/tracking/centroid',
             self.centroid_callback,
             10
         )
 
+        # Create a subscriber for the laser scan topic
         self.laser_subscriber = self.create_subscription(
             LaserScan,
             '/scan',
             self.laser_callback,
             10
         )
-
-        # Create a publisher for the HSV values
-        self.centroid_publisher = self.create_publisher(
-            Point,
-            '/tracking/centroid',
+        
+        # Create a publisher for the distance values
+        self.distance_publisher = self.create_publisher(
+            Float32MultiArray,
+            '/tracking/distance',
             10
         )
-        self.image_publisher = self.create_publisher(
-            CompressedImage,
-            '/tracking/processed_image',
-            10
-        )
-
         self.get_logger().info("GetObjectDistance node has been started.")
 
     def centroid_callback(self, msg):
@@ -50,98 +46,54 @@ class GetObjectDistance(Node):
         self.target_img_x = msg.x
         self.target_img_y = msg.y
 
-    def image_callback(self, msg):
-        # Convert the compressed image message to a numpy array
-        np_arr = np.frombuffer(msg.data, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    def laser_callback(self, msg):
+        # Store the laser scan values from the message
+        self.laser_ranges = msg.ranges
+        self.angle_min = msg.angle_min
+        self.angle_max = msg.angle_max
+        self.angle_increment = msg.angle_increment
+        self.range_min = msg.range_min
+        self.range_max = msg.range_max
 
-        if frame is None:
-            return
+        # Define the valid range for the laser scan
+        self.spec_range.min = 0.16
+        self.spec_range.max = 80
 
-        if not hasattr(self, 'target_hsv'):
-            return
+        # Ensure the range values are within the specified limits
+        if self.range_max > self.spec_range.max:
+            self.range_max = self.spec_range.max
+        if self.range_min < self.spec_range.min:
+            self.range_min = self.spec_range.min
 
-        found, cx, cy, contour = self.find_target(frame)
+        # Filter out invalid laser scan ranges
+        filtered_ranges = [r for r in self.laser_ranges if r < self.range_max and r > self.range_min]
 
-        if found:
-            centroid_msg = Point()
-            centroid_msg.x = float(cx)
-            centroid_msg.y = float(cy)
-            centroid_msg.z = 0.0
+        # Calculate the angle of the target in radians
+        angle = (self.target_img_x - 160) * (np.pi / 320)
 
-            # Draw a bounding box around the detected object
-            x, y, w, h = cv2.boundingRect(contour)
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.circle(frame, (cx, cy), 5, (255, 0, 0), -1)
-            cv2.putText(frame, f"({cx}, {cy})", (cx + 10, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        # Calculate the index of the laser scan range corresponding to the target angle
+        index = int((angle - self.angle_min) / self.angle_increment)
 
-            self.centroid_publisher.publish(centroid_msg)
-            self.publish_compressed_image(frame)
+        # Get the distance to the target from the laser scan ranges
+        if 0 <= index < len(filtered_ranges):
+            self.target_distance = np.mean(filtered_ranges[index-2:index+3])  # Average over a small range to reduce noise
+        # Log the target distance
+        self.get_logger().info(f"Target distance: {self.target_distance:.2f} meters")
 
-    def find_target(self, frame):
-        # Convert the frame to HSV
-        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        target_hsv = self.target_hsv[0:3]
-        thresholds = self.target_hsv[3:6]
-
-        # Define the lower and upper bounds for thresholding
-        lower_bound = np.clip(target_hsv - thresholds, [0, 0, 0], [179, 255, 255]).astype(np.uint8)
-        upper_bound = np.clip(target_hsv + thresholds, [0, 0, 0], [179, 255, 255]).astype(np.uint8)
-
-        # Threshold the HSV image to get only the colors in the range
-        mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
-
-        # Run opening and closing to remove noise and fill gaps
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        opened = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
-
-        # Find contours in the thresholded image
-        contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        if contours:
-            valid_contours = [
-                contour for contour in contours
-                if cv2.contourArea(contour) > 200
-            ]
-
-            if valid_contours:
-                target_contour = max(valid_contours, key=cv2.contourArea)
-
-                center = self.get_contour_center(target_contour)
-
-                if center is not None:
-                    cX, cY = center
-                    return True, cX, cY, target_contour
-
-        return False, None, None, None
-
-    # Get the center of any contour
-    def get_contour_center(self, contour):
-        M = cv2.moments(contour)
-
-        if M["m00"] == 0:
-            return None
-
-        cX = int(M["m10"] / M["m00"])
-        cY = int(M["m01"] / M["m00"])
-
-        return (cX, cY)
-
-    def publish_compressed_image(self, frame):
-        # Convert the frame to a compressed image message
-        out_msg = self._bridge.cv2_to_compressed_imgmsg(frame, dst_format='jpeg')
-        self.image_publisher.publish(out_msg)
+        # Publish the target distance to the distance topic
+        distance_msg = Float32MultiArray()
+        distance_msg.data = [self.target_img_x, self.target_distance]
+        self.distance_publisher.publish(distance_msg)
 
 def main(args=None):
     rclpy.init(args=args)
-    object_finder = ObjectFinder()
+    object_distance_node = GetObjectDistance()
     try:
-        rclpy.spin(object_finder)
+        rclpy.spin(object_distance_node)
     except KeyboardInterrupt:
         pass
     finally:
-        object_finder.destroy_node()
+        object_distance_node.destroy_node()
         rclpy.shutdown()
 
 if __name__ == '__main__':
