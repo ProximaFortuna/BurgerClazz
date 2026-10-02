@@ -31,7 +31,5 @@ def generate_launch_description():
             executable='chasedown',
             name='chasedown'
         ),
-        IncludeLaunchDescription(
-            include_launch
-        )
+        include_launch
     ])
