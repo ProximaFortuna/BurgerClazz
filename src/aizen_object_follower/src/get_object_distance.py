@@ -10,6 +10,7 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import LaserScan
+from rclpy.qos import qos_profile_sensor_data
 
 
 class GetObjectDistance(Node):
@@ -35,7 +36,7 @@ class GetObjectDistance(Node):
             LaserScan,
             '/scan',
             self.laser_callback,
-            10
+            qos_profile_sensor_data
         )
         
         # Create a publisher for the distance values
@@ -66,8 +67,8 @@ class GetObjectDistance(Node):
         self.range_max = msg.range_max
 
         # Define the valid range for the laser scan
-        self.spec_range_min = max(0.16, self.range_min)
-        self.spec_range_max = min(80, self.range_max)
+        self.range_min = max(0.16, self.range_min)
+        self.range_max = min(80, self.range_max)
 
         # Calculate the angle of the target in radians
         fov = 62.2 * (np.pi / 180)  # Convert FOV to radians
