@@ -26,7 +26,7 @@ class ChaseObject(Node):
 
         # Proportional gains
         # These are starting values and WILL need tuning.
-        self.kp_theta = -1.4
+        self.kp_theta = 1.4
         self.kp_dist = 0.6
 
         self.max_linear_velocity = 0.22   # m/s
