@@ -22,12 +22,12 @@ class ChaseObject(Node):
         # --------------------------------
 
         # Desired distance from the object: 1 foot
-        self.desired_distance = 1 # meters
+        self.desired_distance = 0.6 # meters
 
         # Proportional gains
         # These are starting values and WILL need tuning.
-        self.kp_theta = -2
-        self.kp_dist = 0.8
+        self.kp_theta = -1.4
+        self.kp_dist = 0.6
 
         self.max_linear_velocity = 0.22   # m/s
         self.max_angular_velocity = 1.0   # rad/s
