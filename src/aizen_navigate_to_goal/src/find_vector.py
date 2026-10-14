@@ -45,6 +45,10 @@ class FindVector(Node):
 
     def lidar_callback(self, msg):
 
+        if not hasattr(self, 'robot_x') or not hasattr(self, 'robot_y'):
+            self.get_logger().warn("No odometry data received yet.")
+            return
+
          # Store the laser scan values from the message
         self.laser_ranges = msg.ranges
         self.angle_min = msg.angle_min
