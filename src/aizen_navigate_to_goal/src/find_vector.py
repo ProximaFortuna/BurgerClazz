@@ -72,10 +72,9 @@ class FindVector(Node):
     def lidar_callback(self, msg):
 
         # If no odom data, warn
-        if not hasattr(self, 'robot_x') or not hasattr(self, 'robot_y'):
-            self.get_logger().warn("No odometry data received yet.")
+        if self.robot_x is None or self.robot_y is None:
+            self.get_logger().warn("No odometry data received yet.", throttle_duration_sec=2.0)
             return
-
         # If no goals, warn
         if not self.goals:
             self.get_logger().warn("No goals loaded.")
