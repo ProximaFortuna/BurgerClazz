@@ -88,7 +88,7 @@ class FindVector(Node):
                 total_vector_x += -x / r * mag
                 total_vector_y += -y / r * mag
 
-        obstacle_angle = math.atan2(total_vector_y, total_vector_x)
+        obstacle_angle = math.atan2(total_vector_y, total_vector_x) % (2 * math.pi)
         obstacle_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
