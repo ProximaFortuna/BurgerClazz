@@ -17,6 +17,13 @@ install(PROGRAMS
   RENAME find_vector
 )
 
+install(PROGRAMS
+  src/find_robot_pos.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME find_robot_pos
+)
+
+
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
 )

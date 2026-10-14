@@ -13,9 +13,9 @@ import numpy as np
 import math
 
 
-class print_transformed_odom(Node):
+class FindRobotPos(Node):
     def __init__(self):
-        super().__init__('print_fixed_odom')
+        super().__init__('find_robot_pos')
         # State (for the update_Odometry code)
         self.Init = True
         self.Init_pos = Point()
@@ -68,9 +68,9 @@ class print_transformed_odom(Node):
     
 def main(args=None):
     rclpy.init(args=args)
-    print_odom = print_transformed_odom()
-    rclpy.spin(print_odom)
-    print_odom.destroy_node()
+    find_robot_pos = FindRobotPos()
+    rclpy.spin(find_robot_pos)
+    find_robot_pos.destroy_node()
     rclpy.shutdown()
 
 if __name__=='__main__':
