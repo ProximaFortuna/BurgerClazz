@@ -64,7 +64,7 @@ class FindRobotPos(Node):
         self.globalAng = math.atan2(np.sin(orientation-self.Init_ang),np.cos(orientation-self.Init_ang))
     
         self.location_pub.publish(self.globalPos)
-        self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))
+        #self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))
     
 def main(args=None):
     rclpy.init(args=args)
