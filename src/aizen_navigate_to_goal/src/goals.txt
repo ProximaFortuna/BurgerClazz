@@ -1,0 +1,4 @@
+# x y (global frame in m)
+1.5 0
+1.5 1.4
+0 1.4
