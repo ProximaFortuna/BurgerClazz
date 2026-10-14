@@ -13,6 +13,8 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import LaserScan
 from rclpy.qos import qos_profile_sensor_data
+import os
+from ament_index_python.packages import get_package_share_directory
 
 # Note: The following code is based on the potential field method for robot navigation. 
 # The robot is attracted to the goal and repelled by obstacles detected by the LIDAR. 
@@ -30,7 +32,10 @@ class FindVector(Node):
         self.repulsion_gain = 1.0  # Gain for the repulsion vector (Increase to make the robot more sensitive to obstacles)
 
         self.goal_tol = 0.01 # Tolerance for reaching the goal (meters)
-        self.goals = self.load_goals('goals.txt') # Load goals from a file
+
+        path = os.path.join(
+            get_package_share_directory('aizen_navigate_to_goal'), 'goals.txt')
+        self.goals = self.load_goals(path) # Load goals from a file
         self.current_goal_index = 0 # Current index to list of goals
         self.goal_gain = 10 # Gain for the attraction vector (Increase to make the robot more sensitive to goals)
 

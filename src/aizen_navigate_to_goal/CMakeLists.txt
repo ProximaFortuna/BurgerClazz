@@ -23,6 +23,10 @@ install(PROGRAMS
   RENAME find_robot_pos
 )
 
+install(FILES
+  src/goals.txt
+  DESTINATION share/${PROJECT_NAME}
+
 
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
