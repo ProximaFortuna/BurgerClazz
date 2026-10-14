@@ -26,6 +26,7 @@ install(PROGRAMS
 install(FILES
   src/goals.txt
   DESTINATION share/${PROJECT_NAME}
+)
 
 
 install(DIRECTORY launch
