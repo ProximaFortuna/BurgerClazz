@@ -19,6 +19,13 @@ class FindVector(Node):
     def __init__(self):
         super().__init__('find_vector')
 
+        self.robot_x = None
+        self.robot_y = None
+
+        self.inflation_radius = 2  # meters
+        self.min_valid_range = 0.16  # meters
+        self.repulsion_gain = 1.0  # Gain for the repulsion vector
+
         # Create a subscriber for the image topic
         self.odom_subscriber = self.create_subscription(
             Point,
@@ -60,34 +67,33 @@ class FindVector(Node):
         self.range_max = msg.range_max
 
         # Define the valid range for the laser scan
-        self.range_min = max(0.16, self.range_min)
-        self.range_max = 2 #HARDCODED MAX DISTANCE
+        self.range_min = max(self.min_valid_range, self.range_min)
+        self.range_max = min(self.inflation_radius, self.range_max)
 
         total_vector_x = 0
         total_vector_y = 0
 
-        for i in range(len(self.laser_ranges)):
-            if self.laser_ranges[i] <= self.range_max and self.laser_ranges[i] >= self.range_min:
+        for i, r in enumerate(self.laser_ranges):
+            if r <= self.range_max and r >= self.range_min:
                 # Calculate the angle of the laser scan
                 angle = self.angle_min + i * self.angle_increment
 
                 # Calculate the x and y coordinates of the laser scan point
-                x = self.laser_ranges[i] * np.cos(angle)
-                y = self.laser_ranges[i] * np.sin(angle)
+                x = r * np.cos(angle)
+                y = r * np.sin(angle)
+
+                mag = self.repulsion_gain * (1 / r - 1 / self.inflation_radius) / (r ** 2)
 
                 # Calculate the vector from the laser scan point to the robot's position
-                vector_x = self.robot_x - x
-                vector_y = self.robot_y - y
+                total_vector_x += -x / r * mag
+                total_vector_y += -y / r * mag
 
-                total_vector_x += vector_x
-                total_vector_y += vector_y
-
-        obstacle_angle = (math.atan2(total_vector_y, total_vector_x) * 180 / np.pi + 360) % 360
-        obstacle_mag = np.sqrt(total_vector_x**2 + total_vector_y**2)
+        obstacle_angle = (math.degrees(math.atan2(total_vector_y, total_vector_x)) + 360) % 360
+        obstacle_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
         direction_msg = Float32MultiArray()
-        direction_msg.data = [obstacle_mag, obstacle_angle]
+        direction_msg.data = [float(obstacle_mag), float(obstacle_angle)]
         self.direction_publisher.publish(direction_msg)
 
 def main(args=None):
