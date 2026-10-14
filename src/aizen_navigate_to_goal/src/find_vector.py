@@ -37,7 +37,7 @@ class FindVector(Node):
             get_package_share_directory('aizen_navigate_to_goal'), 'goals.txt')
         self.goals = self.load_goals(path) # Load goals from a file
         self.current_goal_index = 0 # Current index to list of goals
-        self.goal_gain = 10 # Gain for the attraction vector (Increase to make the robot more sensitive to goals)
+        self.goal_gain = 50 # Gain for the attraction vector (Increase to make the robot more sensitive to goals)
 
         # Subscriber for fixed odom data
         self.odom_subscriber = self.create_subscription(
