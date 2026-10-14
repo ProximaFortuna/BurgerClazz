@@ -61,7 +61,7 @@ class FindRobotPos(Node):
         #We subtract the initial values
         self.globalPos.x = Mrot.item((0,0))*position.x + Mrot.item((0,1))*position.y - self.Init_pos.x
         self.globalPos.y = Mrot.item((1,0))*position.x + Mrot.item((1,1))*position.y - self.Init_pos.y
-        self.globalAng = orientation - self.Init_ang
+        self.globalAng = math.atan2(np.sin(orientation-self.Init_ang),np.cos(orientation-self.Init_ang))
     
         self.location_pub.publish(self.globalPos)
         self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))

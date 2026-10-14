@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 # Logan Purkiss and Mopel Kitele
+import math
+
 import numpy as np
 import cv2
 from geometry_msgs.msg import Point
@@ -80,7 +82,7 @@ class FindVector(Node):
                 total_vector_x += vector_x
                 total_vector_y += vector_y
 
-        obstacle_angle = np.arctan2(total_vector_y, total_vector_x)
+        obstacle_angle = (math.atan2(total_vector_y, total_vector_x) * 180 / np.pi + 360) % 360
         obstacle_mag = np.sqrt(total_vector_x**2 + total_vector_y**2)
 
         # Create a Float32MultiArray message for the direction
