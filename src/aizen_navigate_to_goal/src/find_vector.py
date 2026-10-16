@@ -28,6 +28,8 @@ class FindVector(Node):
 
         self.wait_until = None
 
+        self.follow_wall = False
+
         self.obstacle_radius = 2  # radius where obstacles are considered (meters)
         self.min_valid_range = 0.16  # radius where too close lidar scan points are ignored (meters)
         self.repulsion_gain = 1.0  # Gain for the repulsion vector (Increase to make the robot more sensitive to obstacles)
@@ -111,8 +113,8 @@ class FindVector(Node):
         self.range_max = min(self.obstacle_radius, self.range_max)
 
         # Initialize combined vector values
-        total_vector_x = 0
-        total_vector_y = 0
+        total_rx = 0
+        total_ry = 0
 
         # Loop through the Lidar scan range data and for ever reading that is within the range to be considered an obstacle calculate it's x and y
         # coords within the local frame. Scale by a factor that increases relevance the closer the object and add to the combined vector values.
@@ -129,12 +131,12 @@ class FindVector(Node):
                 mag = self.repulsion_gain * (1 / r - 1 / self.obstacle_radius)
 
                 # Calculate the vector from the laser scan point to the robot's position
-                total_vector_x += -x / r * mag
-                total_vector_y += -y / r * mag
+                push_vector_x += -x / r * mag
+                push_vector_y += -y / r * mag
 
         # Get the obstacle angle and magnitude for debugging purposes
-        obstacle_angle = math.atan2(total_vector_y, total_vector_x)
-        obstacle_mag = math.hypot(total_vector_x, total_vector_y)
+        obstacle_angle = math.atan2(push_vector_y, push_vector_x)
+        obstacle_mag = math.hypot(push_vector_x, push_vector_y)
 
         # Get the x and y parts of the vector pointing to the current goal
         goal_x, goal_y = self.goals[self.current_goal_index]
@@ -164,16 +166,36 @@ class FindVector(Node):
                 self.wait_until = self.get_clock().now() + Duration(seconds=10)
 
         # Scale the unit goal vector to make it magnitude of 50
-        scaled_goal_vector_x = goal_vector_x * self.goal_gain / goal_mag
-        scaled_goal_vector_y = goal_vector_y * self.goal_gain / goal_mag
+
+        goal_ux = goal_vector_x / goal_mag
+        goal_uy = goal_vector_y / goal_mag
+
+        scaled_goal_vector_x = goal_ux * self.goal_gain
+        scaled_goal_vector_y = goal_uy * self.goal_gain
 
         # Get the final combined vector x and y
-        total_vector_x += scaled_goal_vector_x
-        total_vector_y += scaled_goal_vector_y
+        total_vector_x = scaled_goal_vector_x + push_vector_x
+        total_vector_y = scaled_goal_vector_y + push_vector_y
 
         # Calculate the final direction and magnitude
         final_angle = math.atan2(total_vector_y, total_vector_x)
         final_mag = math.hypot(total_vector_x, total_vector_y)
+
+        if final_mag < 10:
+            cross = goal_uy * push_vector_x - push_vector_y * goal_ux
+            side = 1.0 if cross >= 0 else -1.0
+            self.follow_wall = True
+
+        if self.follow_wall & final_mag > 30:
+            self.follow_wall = False
+
+        if self.follow_wall:
+            tx = side * -push_vector_y / obstacle_mag
+            ty = side * push_vector_x / obstacle_mag
+            total_vector_x = push_vector_x + tx * self.goal_gain + 0.2 * scaled_goal_vector_x
+            total_vector_y = push_vector_y + ty * self.goal_gain + 0.2 * scaled_goal_vector_y
+            final_angle = math.atan2(total_vector_y, total_vector_x)
+            final_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
         direction_msg.data = [float(final_mag), float(final_angle)]
