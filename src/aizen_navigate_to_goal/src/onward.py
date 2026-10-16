@@ -118,7 +118,7 @@ class ChaseObject(Node):
         # e_theta       -> negative
         # omega         -> negative
         # robot rotates clockwise/right
-        e_theta = self.direction_angle
+        e_theta = self.direction_angle #FIX
 
         # Positive distance error means the object is too far away.
         # Negative distance error means the object is too close.
