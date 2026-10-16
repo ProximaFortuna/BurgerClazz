@@ -22,20 +22,20 @@ class FindVector(Node):
     def __init__(self):
         super().__init__('find_vector')
 
-        self.robot_x = None
-        self.robot_y = None
-        self.robot_yaw = None
+        self.robot_x = None # Robot world coord x
+        self.robot_y = None # Robot world coord y
+        self.robot_yaw = None # Robot world coord rotation
 
-        self.follow_side = 0.0
-        self.follow_wall = False
-        self.follow_start_d = 0.0
-        self.follow_start_mag = 10
-        self.min_push = 1.0
-        self.needed_progress = 0.3
-        self.follow_distance = 0.1
-        self.keepaway_band = 0.15
+        self.follow_side = 0.0 # Value that determines which way robot follows wall
+        self.follow_wall = False # Should we follow wall?
+        self.follow_start_d = 0.0 # What distance we started following wall
+        self.follow_start_mag = 10 # What potential field net magnitude we start following wall bellow
+        self.min_push = 0.3 # Minimum push vector to be allowed to follow something
+        self.needed_progress = 0.3 # Progress that must be made before switching back to potential field navigation
+        self.follow_distance = 0.15 # Distance to follow the wall at
+        self.keepaway_band = 0.15 # Gain term for the P controller on wall distance
 
-        self.wait_until = None
+        self.wait_until = None # Variable for causing waits to happen
 
         self.obstacle_radius = 1  # radius where obstacles are considered (meters)
         self.min_valid_range = 0.16  # radius where too close lidar scan points are ignored (meters)
@@ -43,6 +43,7 @@ class FindVector(Node):
 
         self.goal_tol = 0.05 # Tolerance for reaching the goal (meters)
 
+        # Set up goal filepath
         path = os.path.join(
             get_package_share_directory('aizen_navigate_to_goal'), 'goals.txt')
         self.goals = self.load_goals(path) # Load goals from a file
@@ -79,9 +80,11 @@ class FindVector(Node):
         self.robot_y = data.y
         self.robot_yaw = data.z
 
+    # Stop following wall helper
     def reset_follow(self):
         self.follow_wall = False
 
+    # Stop doing anything helper
     def stop(self):
         direction_msg = Float32MultiArray()
         direction_msg.data = [0.0, 0.0]
@@ -98,9 +101,6 @@ class FindVector(Node):
         if not self.goals:
             self.get_logger().warn("No goals loaded.")
             return
-
-        # Initialize message
-        direction_msg = Float32MultiArray()
 
         # Stop when at last goal
         if self.current_goal_index >= len(self.goals):
@@ -127,10 +127,11 @@ class FindVector(Node):
         self.range_min = max(self.min_valid_range, self.range_min)
         self.range_max = min(self.obstacle_radius, self.range_max)
 
-        # Initialize combined vector values
+        # Initialize push vector values
         push_vector_x = 0
         push_vector_y = 0
 
+        # Initialize the nearest point angle and distance
         nearest_r = float('inf')
         nearest_angle = 0.0
 
@@ -145,6 +146,7 @@ class FindVector(Node):
                 x = r * np.cos(angle)
                 y = r * np.sin(angle)
 
+                # If the point is closer than current closest, make it the closest point
                 if r < nearest_r:
                     nearest_r = r
                     nearest_angle = angle
@@ -160,7 +162,7 @@ class FindVector(Node):
         obstacle_angle = math.atan2(push_vector_y, push_vector_x)
         obstacle_mag = math.hypot(push_vector_x, push_vector_y)
 
-        # Get the x and y parts of the vector pointing to the current goal
+        # Get the x and y parts of the vector pointing to the current goal in local frame
         goal_x, goal_y = self.goals[self.current_goal_index]
         dx = goal_x - self.robot_x
         dy = goal_y - self.robot_y
@@ -186,10 +188,11 @@ class FindVector(Node):
             else:
                 self.wait_until = self.get_clock().now() + Duration(seconds=10)
 
-        # Scale the unit goal vector to make it magnitude of 50
+        # Get goal unit vectors
         goal_ux = goal_vector_x / goal_mag
         goal_uy = goal_vector_y / goal_mag
 
+        # Scale the unit goal vector to make it magnitude of 50
         scaled_goal_vector_x = goal_ux * self.goal_gain
         scaled_goal_vector_y = goal_uy * self.goal_gain
 
@@ -201,17 +204,17 @@ class FindVector(Node):
         final_angle = math.atan2(total_vector_y, total_vector_x)
         final_mag = math.hypot(total_vector_x, total_vector_y)
 
-        # Progress checking
+        ###### Wall following stuff ######
 
         # Get time
         now = self.get_clock().now().nanoseconds * 1.e-9
 
         # If we should follow wall but we aren't then start following
         if not self.follow_wall and final_mag < self.follow_start_mag and obstacle_mag > self.min_push:
-            cross = goal_uy * push_vector_x - push_vector_y * goal_ux
+            cross = goal_uy * push_vector_x - push_vector_y * goal_ux # Cross product to find which way to go
             self.follow_side = 1.0 if cross >= 0 else -1.0
             self.follow_wall = True
-            self.follow_start_d = goal_mag
+            self.follow_start_d = goal_mag # Set the starting distance to goal
 
         # If we have made enough progress then stop following the wall
         if self.follow_wall and goal_mag < self.follow_start_d - self.needed_progress:
@@ -220,16 +223,20 @@ class FindVector(Node):
         # If we are supposed to follow the wall, then follow a vector tangent to the wall
         if self.follow_wall:
             if nearest_r < float('inf'):
+                # Get unit vectors
                 nearest_ux = math.cos(nearest_angle)
                 nearest_uy = math.sin(nearest_angle)
 
+                # make them unit vectors of the tangent in the way we wanna go
                 tx = self.follow_side * nearest_uy
                 ty = self.follow_side * -nearest_ux
 
+                # Sneaky P controller shhhhhhhhh
                 err = (nearest_r - self.follow_distance) / self.keepaway_band
                 err = max(-1.0, min(1.0, err))
                 radial = self.goal_gain * err
 
+                # Assemble the final vector for following
                 total_vector_x = tx * self.goal_gain + nearest_ux * radial
                 total_vector_y = ty * self.goal_gain + nearest_uy * radial
                 final_angle = math.atan2(total_vector_y, total_vector_x)
