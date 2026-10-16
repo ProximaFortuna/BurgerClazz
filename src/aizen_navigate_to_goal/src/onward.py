@@ -11,47 +11,58 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32MultiArray
 
 
-class ChaseObject(Node):
+class Onward(Node):
 
     def __init__(self):
-        super().__init__('chase_object')
+        super().__init__('onward')
 
         # --------------------------------
         # Controller parameters
         # --------------------------------
 
-        # Desired distance from the object: 1 foot
-        self.desired_distance = 0.5  # meters
-
-        # If heading error is greater than 30 degrees,
-        # stop translating and focus entirely on rotation.
+        # Heading threshold:
+        # Rotate in place if the desired direction
+        # is more than 30 degrees from straight ahead.
         self.theta_threshold = math.radians(30.0)
 
-        # Proportional gains
-        # These are starting values and WILL need tuning.
-        self.kp_theta = 0.8
-        self.kp_dist = 1
+        # Angular proportional gain
+        self.kp_theta = 2.0
+
+        # Forward cruising velocity
+        self.cruise_velocity = 0.12  # m/s
 
         # Velocity saturation
         self.max_linear_velocity = 0.22   # m/s
         self.max_angular_velocity = 1.0   # rad/s
 
+        # Minimum resultant field magnitude required to move
+        self.min_field_magnitude = 0.01
+
+        # Stop if navigation commands become stale
+        self.command_timeout = 0.5  # seconds
+
         # --------------------------------
-        # Latest object measurement
+        # Latest navigation measurement
         # --------------------------------
 
         self.direction_angle = 0.0
         self.direction_mag = 0.0
 
         self.have_measurement = False
+        self.last_direction_time = None
 
         # --------------------------------
         # ROS interfaces
         # --------------------------------
 
-        # Expected message:
-        # msg.data[0] = goal direction force mag
-        # msg.data[1] = goal direction angle in degrees
+        # Expected message from find_vector:
+        #
+        # msg.data[0] = resultant potential-field magnitude
+        # msg.data[1] = steering angle in radians
+        #
+        # Positive angle = turn left (counterclockwise)
+        # Negative angle = turn right (clockwise)
+
         self.direction_sub = self.create_subscription(
             Float32MultiArray,
             '/direction',
@@ -59,7 +70,7 @@ class ChaseObject(Node):
             10
         )
 
-        # Velocity commands to TurtleBot
+        # Velocity commands to TurtleBot3
         self.cmd_vel_pub = self.create_publisher(
             Twist,
             '/cmd_vel',
@@ -74,55 +85,100 @@ class ChaseObject(Node):
 
         self.get_logger().info('Onward controller started.')
 
+    # --------------------------------
+    # Direction callback
+    # --------------------------------
+
     def direction_callback(self, msg):
         """
-        Stores the most recent direction measurement.
-        This callback does NOT directly control the robot.
+        Receives the resultant vector calculated by
+        the find_vector node.
+
+        Stores the latest magnitude and steering angle.
         """
 
-        if len(msg.data) < 2:
+        if len(msg.data) != 2:
             self.get_logger().warn(
-                'Received malformed /tracking/distance message.'
+                'Expected [magnitude, angle] from /direction.'
             )
             return
 
-        self.direction_mag = msg.data[0]
-        self.direction_angle = msg.data[1]
+        magnitude = float(msg.data[0])
+        angle = float(msg.data[1])
+
+        # Reject invalid measurements
+        if not math.isfinite(magnitude) or not math.isfinite(angle):
+            return
+
+        if magnitude < 0.0:
+            return
+
+        self.direction_mag = magnitude
+
+        # Normalize steering angle to [-pi, pi]
+        self.direction_angle = math.atan2(
+            math.sin(angle),
+            math.cos(angle)
+        )
 
         self.have_measurement = True
+        self.last_direction_time = self.get_clock().now()
+
+    # --------------------------------
+    # Control callback
+    # --------------------------------
 
     def control_callback(self):
         """
-        Runs the actual chasedown controller at 20 Hz.
+        Converts the desired potential-field direction
+        into linear and angular velocity commands.
+
+        Runs at 20 Hz.
         """
 
+        # Default command is zero velocity
         cmd = Twist()
 
-        # Do not move until at least one valid measurement
-        # has been received.
+        # --------------------------------
+        # Check navigation data
+        # --------------------------------
+
+        # Do not move until a valid measurement arrives
         if not self.have_measurement:
             self.cmd_vel_pub.publish(cmd)
             return
 
+        # Stop if the latest measurement is too old
+        elapsed = (
+            self.get_clock().now() - self.last_direction_time
+        ).nanoseconds / 1e9
+
+        if elapsed < 0.0 or elapsed > self.command_timeout:
+            self.cmd_vel_pub.publish(cmd)
+            return
+
         # --------------------------------
-        # Compute errors
+        # Check resultant magnitude
         # --------------------------------
 
-        # Desired heading is straight ahead: 0 radians.
+        # A zero resultant vector indicates either:
+        # 1. The robot has reached a waypoint and must stop.
+        # 2. The potential-field forces have nearly cancelled.
         #
-        # Partner's convention:
-        # positive object angle = object is to the right
-        #
-        # Therefore:
-        # object right  -> positive theta_obj
-        # e_theta       -> negative
-        # omega         -> negative
-        # robot rotates clockwise/right
+        # In either case, command zero velocity.
+
+        if self.direction_mag < self.min_field_magnitude:
+            self.cmd_vel_pub.publish(cmd)
+            return
+
+        # --------------------------------
+        # Compute heading error
+        # --------------------------------
+
+        # find_vector already provides the desired
+        # steering angle in the robot's local frame.
+
         e_theta = self.direction_angle
-
-        # Positive distance error means the object is too far away.
-        # Negative distance error means the object is too close.
-        e_dir = self.direction_mag / 10
 
         # --------------------------------
         # Angular proportional controller
@@ -131,59 +187,61 @@ class ChaseObject(Node):
         omega_raw = self.kp_theta * e_theta
 
         # --------------------------------
-        # Linear proportional controller
+        # Linear velocity controller
         # --------------------------------
 
-        if abs(e_theta) > self.theta_threshold:
-            # Object is too far off-center.
-            # Rotate first before translating.
+        if abs(e_theta) >= self.theta_threshold:
+
+            # Desired direction is too far from
+            # the robot's current heading.
+            #
+            # Rotate in place before translating.
+
             v_raw = 0.0
 
         else:
+
             # Heading-dependent forward velocity scaling.
             #
-            # Perfect heading:
-            # e_theta = 0  -> g_theta = 1
+            # At zero heading error:
+            # g_theta = 1
             #
-            # At 30-degree threshold:
-            # |e_theta| = theta_threshold -> g_theta = 0
-            #
-            # The squared relationship lets the robot retain
-            # more forward speed for smaller heading errors,
-            # then slows it aggressively near the threshold.
+            # At the 30-degree threshold:
+            # g_theta = 0
+
             g_theta = 1.0 - (
                 abs(e_theta) / self.theta_threshold
             ) ** 2
 
-            # Defensive clamp to guarantee:
-            # 0 <= g_theta <= 1
+            # Clamp scaling factor to [0, 1]
             g_theta = max(
                 0.0,
                 min(1.0, g_theta)
             )
 
-            v_raw = (
-                self.kp_dist
-                * e_dir
-                * g_theta
-            )
+            # Forward velocity decreases as
+            # heading error increases.
+
+            v_raw = self.cruise_velocity * g_theta
 
         # --------------------------------
         # Velocity saturation
         # --------------------------------
 
+        # Only allow forward translation
         v_cmd = max(
-            -self.max_linear_velocity,
+            0.0,
             min(self.max_linear_velocity, v_raw)
         )
 
+        # Limit angular velocity
         omega_cmd = max(
             -self.max_angular_velocity,
             min(self.max_angular_velocity, omega_raw)
         )
 
         # --------------------------------
-        # Build and publish Twist command
+        # Publish velocity command
         # --------------------------------
 
         cmd.linear.x = v_cmd
@@ -196,7 +254,7 @@ def main(args=None):
 
     rclpy.init(args=args)
 
-    node = ChaseObject()
+    node = Onward()
 
     try:
         rclpy.spin(node)
@@ -205,12 +263,12 @@ def main(args=None):
         pass
 
     finally:
-        # Send one final zero-velocity command before shutting down.
+
+        # Stop robot before shutting down
         stop_cmd = Twist()
         node.cmd_vel_pub.publish(stop_cmd)
 
         node.destroy_node()
-
         rclpy.shutdown()
 
 
