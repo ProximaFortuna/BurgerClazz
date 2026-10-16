@@ -205,11 +205,11 @@ class FindVector(Node):
         if self.follow_wall and goal_mag < self.follow_start_d - self.needed_progress:
             self.follow_wall = False
 
-        if self.follow_wall:
+        if self.follow_wall and obstacle_mag > 0.03:
             tx = self.follow_side * -push_vector_y / obstacle_mag
             ty = self.follow_side * push_vector_x / obstacle_mag
-            total_vector_x = push_vector_x + tx * self.goal_gain + 0.2 * scaled_goal_vector_x
-            total_vector_y = push_vector_y + ty * self.goal_gain + 0.2 * scaled_goal_vector_y
+            total_vector_x = tx * self.goal_gain
+            total_vector_y = ty * self.goal_gain
             final_angle = math.atan2(total_vector_y, total_vector_x)
             final_mag = math.hypot(total_vector_x, total_vector_y)
 
