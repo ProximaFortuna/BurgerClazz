@@ -88,7 +88,6 @@ class FindVector(Node):
             self.direction_publisher.publish(direction_msg)
             return
 
-
         if self.wait_until is not None:
             if self.get_clock().now() < self.wait_until:
                 direction_msg = Float32MultiArray()
