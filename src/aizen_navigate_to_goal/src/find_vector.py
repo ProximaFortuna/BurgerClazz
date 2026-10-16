@@ -28,11 +28,11 @@ class FindVector(Node):
         self.robot_x = None
         self.robot_y = None
 
-        self.obstacle_radius = 2  # radius where obstacles are considered (meters)
+        self.obstacle_radius = 1  # radius where obstacles are considered (meters)
         self.min_valid_range = 0.16  # radius where too close lidar scan points are ignored (meters)
         self.repulsion_gain = 1.0  # Gain for the repulsion vector (Increase to make the robot more sensitive to obstacles)
 
-        self.goal_tol = 0.01 # Tolerance for reaching the goal (meters)
+        self.goal_tol = 0.05 # Tolerance for reaching the goal (meters)
 
         path = os.path.join(
             get_package_share_directory('aizen_navigate_to_goal'), 'goals.txt')
@@ -81,6 +81,13 @@ class FindVector(Node):
         if not self.goals:
             self.get_logger().warn("No goals loaded.")
             return
+
+        if self.wait_until is not None:
+            if self.get_clock().now() < self.wait_until:
+                direction_msg.data = [0.0, 0.0]
+                self.direction_publisher.publish(direction_msg)
+                return
+            self.wait_until = None
 
         # Store the laser scan values from the message
         self.laser_ranges = msg.ranges
@@ -149,18 +156,10 @@ class FindVector(Node):
             # If not the last goal, wait 10 seconds and then continue to the next goal
             else:
                 self.wait_until = self.get_clock().now() + Duration(seconds=10)
-                self.get_logger().info(f"Waiting for {wait_time} seconds before moving to the next goal...")
-                direction_msg.data = [0, 0]
-                self.direction_publisher.publish(direction_msg)
-                rclpy.sleep(wait_time)
-                goal_x, goal_y = self.goals[self.current_goal_index]
-                self.get_logger().info(f"Moving to next goal {self.current_goal_index + 1}: ({goal_x}, {goal_y})")
-                goal_vector_x = goal_x - self.robot_x
-                goal_vector_y = goal_y - self.robot_y
 
-        # Scale the goal vector to make it more important
-        scaled_goal_vector_x = goal_vector_x * self.goal_gain
-        scaled_goal_vector_y = goal_vector_y * self.goal_gain
+        # Scale the unit goal vector to make it magnitude of 50
+        scaled_goal_vector_x = goal_vector_x * self.goal_gain / goal_mag
+        scaled_goal_vector_y = goal_vector_y * self.goal_gain / goal_mag
 
         # Get the final combined vector x and y
         total_vector_x += scaled_goal_vector_x
