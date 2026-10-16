@@ -181,7 +181,7 @@ class FindVector(Node):
             total_vector_x += scaled_goal_vector_y
             total_vector_y += scaled_goal_vector_x
             final_angle = math.atan2(total_vector_y, total_vector_x)
-            final_mag = math.hypot(total_vector_x, total_vector_y)
+            final_mag = 5 * math.hypot(total_vector_x, total_vector_y)
             direction_msg.data = [float(final_mag), float(final_angle)]
             self.direction_publisher.publish(direction_msg)
             return
