@@ -26,6 +26,8 @@ class FindVector(Node):
         self.robot_y = None
         self.robot_yaw = None
 
+        self.follow_side = 0.0
+
         self.wait_until = None
 
         self.follow_wall = False
@@ -183,15 +185,15 @@ class FindVector(Node):
 
         if final_mag < 10:
             cross = goal_uy * push_vector_x - push_vector_y * goal_ux
-            side = 1.0 if cross >= 0 else -1.0
+            self.follow_side = 1.0 if cross >= 0 else -1.0
             self.follow_wall = True
 
         if self.follow_wall & (final_mag > 30):
             self.follow_wall = False
 
         if self.follow_wall:
-            tx = side * -push_vector_y / obstacle_mag
-            ty = side * push_vector_x / obstacle_mag
+            tx = self.follow_side * -push_vector_y / obstacle_mag
+            ty = self.follow_side * push_vector_x / obstacle_mag
             total_vector_x = push_vector_x + tx * self.goal_gain + 0.2 * scaled_goal_vector_x
             total_vector_y = push_vector_y + ty * self.goal_gain + 0.2 * scaled_goal_vector_y
             final_angle = math.atan2(total_vector_y, total_vector_x)
