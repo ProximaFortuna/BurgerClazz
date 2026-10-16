@@ -23,6 +23,12 @@ install(PROGRAMS
   RENAME find_robot_pos
 )
 
+install(PROGRAMS
+  src/onward.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME onward
+)
+
 install(FILES
   src/goals.txt
   DESTINATION share/${PROJECT_NAME}

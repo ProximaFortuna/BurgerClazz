@@ -25,5 +25,10 @@ def generate_launch_description():
             package='aizen_navigate_to_goal',
             executable='find_robot_pos',
             name='find_robot_pos',
+        ),
+        Node(
+            package='aizen_navigate_to_goal',
+            executable='onward',
+            name='onward',
         )
     ])
