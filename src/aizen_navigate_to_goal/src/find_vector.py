@@ -113,8 +113,8 @@ class FindVector(Node):
         self.range_max = min(self.obstacle_radius, self.range_max)
 
         # Initialize combined vector values
-        total_rx = 0
-        total_ry = 0
+        push_vector_x = 0
+        push_vector_y = 0
 
         # Loop through the Lidar scan range data and for ever reading that is within the range to be considered an obstacle calculate it's x and y
         # coords within the local frame. Scale by a factor that increases relevance the closer the object and add to the combined vector values.
