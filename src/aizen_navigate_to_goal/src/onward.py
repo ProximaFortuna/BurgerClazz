@@ -26,7 +26,7 @@ class Onward(Node):
         self.theta_threshold = math.radians(30.0)
 
         # Angular proportional gain
-        self.kp_theta = 0.6
+        self.kp_theta = 5
 
         # Forward cruising velocity
         self.cruise_velocity = 0.12  # m/s
