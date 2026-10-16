@@ -186,7 +186,7 @@ class FindVector(Node):
             side = 1.0 if cross >= 0 else -1.0
             self.follow_wall = True
 
-        if self.follow_wall & final_mag > 30:
+        if self.follow_wall & (final_mag > 30):
             self.follow_wall = False
 
         if self.follow_wall:
