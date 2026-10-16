@@ -80,13 +80,16 @@ class FindVector(Node):
             self.get_logger().warn("No goals loaded.")
             return
 
-         # Store the laser scan values from the message
+        # Store the laser scan values from the message
         self.laser_ranges = msg.ranges
         self.angle_min = msg.angle_min
         self.angle_max = msg.angle_max
         self.angle_increment = msg.angle_increment
         self.range_min = msg.range_min
         self.range_max = msg.range_max
+
+        # Initialize message
+        direction_msg = Float32MultiArray()
 
         # Define the valid range for the laser scan
         self.range_min = max(self.min_valid_range, self.range_min)
@@ -134,12 +137,16 @@ class FindVector(Node):
             # If we are at the last goal, don't do anything anymore
             if self.current_goal_index >= len(self.goals):
                 self.get_logger().info("All goals reached.")
+                direction_msg.data = [0, 0]
+                self.direction_publisher.publish(direction_msg)
                 return
 
             # If not the last goal, wait 10 seconds and then continue to the next goal
             else:
                 wait_time = 10  # seconds
                 self.get_logger().info(f"Waiting for {wait_time} seconds before moving to the next goal...")
+                direction_msg.data = [0, 0]
+                self.direction_publisher.publish(direction_msg)
                 rclpy.sleep(wait_time)
                 goal_x, goal_y = self.goals[self.current_goal_index]
                 self.get_logger().info(f"Moving to next goal {self.current_goal_index + 1}: ({goal_x}, {goal_y})")
@@ -159,7 +166,6 @@ class FindVector(Node):
         final_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
-        direction_msg = Float32MultiArray()
         direction_msg.data = [float(final_mag), float(final_angle)]
         self.direction_publisher.publish(direction_msg)
 

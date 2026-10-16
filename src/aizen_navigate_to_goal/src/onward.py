@@ -40,8 +40,8 @@ class ChaseObject(Node):
         # Latest object measurement
         # --------------------------------
 
-        self.object_angle = 0.0
-        self.object_distance = 0.0
+        self.direction_angle = 0.0
+        self.direction_distance = 0.0
 
         self.have_measurement = False
 
@@ -50,12 +50,12 @@ class ChaseObject(Node):
         # --------------------------------
 
         # Expected message:
-        # msg.data[0] = object angle in radians
-        # msg.data[1] = object distance in meters
-        self.object_sub = self.create_subscription(
+        # msg.data[0] = goal direction force mag
+        # msg.data[1] = goal direction angle in degrees
+        self.direction_sub = self.create_subscription(
             Float32MultiArray,
-            '/tracking/distance',
-            self.object_callback,
+            '/direction',
+            self.direction_callback,
             10
         )
 
@@ -72,11 +72,11 @@ class ChaseObject(Node):
             self.control_callback
         )
 
-        self.get_logger().info('Chase object controller started.')
+        self.get_logger().info('Onward controller started.')
 
-    def object_callback(self, msg):
+    def direction_callback(self, msg):
         """
-        Stores the most recent object measurement.
+        Stores the most recent direction measurement.
         This callback does NOT directly control the robot.
         """
 
@@ -86,8 +86,8 @@ class ChaseObject(Node):
             )
             return
 
-        self.object_angle = msg.data[0]
-        self.object_distance = msg.data[1]
+        self.direction_mag = msg.data[0]
+        self.direction_angle = msg.data[1]
 
         self.have_measurement = True
 
@@ -118,7 +118,7 @@ class ChaseObject(Node):
         # e_theta       -> negative
         # omega         -> negative
         # robot rotates clockwise/right
-        e_theta = self.object_angle
+        e_theta = self.direction_angle
 
         # Positive distance error means the object is too far away.
         # Negative distance error means the object is too close.
