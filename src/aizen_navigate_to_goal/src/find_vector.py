@@ -4,12 +4,9 @@
 import math
 
 import numpy as np
-import cv2
 from geometry_msgs.msg import Point
 import rclpy
 from rclpy.node import Node
-from cv_bridge import CvBridge
-from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import LaserScan
 from rclpy.qos import qos_profile_sensor_data
@@ -27,6 +24,7 @@ class FindVector(Node):
 
         self.robot_x = None
         self.robot_y = None
+        self.robot_yaw = None
 
         self.wait_until = None
 
@@ -84,6 +82,14 @@ class FindVector(Node):
             self.get_logger().warn("No goals loaded.")
             return
 
+        if self.current_goal_index >= len(self.goals):
+            msg.data = [0.0, 0.0]
+            self.direction_publisher.publish(msg)
+            return
+
+        # Initialize message
+        direction_msg = Float32MultiArray()
+
         if self.wait_until is not None:
             if self.get_clock().now() < self.wait_until:
                 direction_msg.data = [0.0, 0.0]
@@ -98,9 +104,6 @@ class FindVector(Node):
         self.angle_increment = msg.angle_increment
         self.range_min = msg.range_min
         self.range_max = msg.range_max
-
-        # Initialize message
-        direction_msg = Float32MultiArray()
 
         # Define the valid range for the laser scan
         self.range_min = max(self.min_valid_range, self.range_min)
