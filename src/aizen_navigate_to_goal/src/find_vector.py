@@ -155,7 +155,7 @@ class FindVector(Node):
         total_vector_y += scaled_goal_vector_y
 
         # Calculate the final direction and magnitude
-        final_angle = math.atan2(total_vector_y, total_vector_x) % (2 * math.pi)
+        final_angle = math.degrees(math.atan2(total_vector_y, total_vector_x)) % 360
         final_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
