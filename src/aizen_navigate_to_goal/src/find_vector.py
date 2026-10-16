@@ -28,7 +28,7 @@ class FindVector(Node):
 
         self.wait_until = None
 
-        self.follow_wall_num = 10
+        self.follow_wall_num = 20
 
         self.obstacle_radius = 2  # radius where obstacles are considered (meters)
         self.min_valid_range = 0.16  # radius where too close lidar scan points are ignored (meters)
