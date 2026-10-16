@@ -27,10 +27,13 @@ class FindVector(Node):
         self.robot_yaw = None
 
         self.follow_side = 0.0
+        self.follow_wall = False
+        self.follow_start_d = 0.0
+        self.follow_start_mag = 10
+        self.min_push = 1.0
+        self.needed_progress = 0.3
 
         self.wait_until = None
-
-        self.follow_wall = False
 
         self.obstacle_radius = 2  # radius where obstacles are considered (meters)
         self.min_valid_range = 0.16  # radius where too close lidar scan points are ignored (meters)
@@ -74,6 +77,14 @@ class FindVector(Node):
         self.robot_y = data.y
         self.robot_yaw = data.z
 
+    def reset_follow(self):
+        self.follow_wall = False
+
+    def stop(self):
+        direction_msg = Float32MultiArray()
+        direction_msg.data = [0.0, 0.0]
+        self.direction_publisher.publish(direction_msg)
+
     # Main function to process lidar data
     def lidar_callback(self, msg):
 
@@ -89,18 +100,18 @@ class FindVector(Node):
         # Initialize message
         direction_msg = Float32MultiArray()
 
+        # Stop when at last goal
         if self.current_goal_index >= len(self.goals):
-            direction_msg.data = [0.0, 0.0]
-            self.direction_publisher.publish(direction_msg)
+            self.stop()
             return
 
-
+        # Wait between goals
         if self.wait_until is not None:
             if self.get_clock().now() < self.wait_until:
-                direction_msg.data = [0.0, 0.0]
-                self.direction_publisher.publish(direction_msg)
+                self.stop()
                 return
             self.wait_until = None
+            self.reset_follow()
 
         # Store the laser scan values from the message
         self.laser_ranges = msg.ranges
@@ -159,8 +170,7 @@ class FindVector(Node):
             # If we are at the last goal, don't do anything anymore
             if self.current_goal_index >= len(self.goals):
                 self.get_logger().info("All goals reached.")
-                direction_msg.data = [0, 0]
-                self.direction_publisher.publish(direction_msg)
+                self.stop()
                 return
 
             # If not the last goal, wait 10 seconds and then continue to the next goal
@@ -168,7 +178,6 @@ class FindVector(Node):
                 self.wait_until = self.get_clock().now() + Duration(seconds=10)
 
         # Scale the unit goal vector to make it magnitude of 50
-
         goal_ux = goal_vector_x / goal_mag
         goal_uy = goal_vector_y / goal_mag
 
@@ -183,12 +192,17 @@ class FindVector(Node):
         final_angle = math.atan2(total_vector_y, total_vector_x)
         final_mag = math.hypot(total_vector_x, total_vector_y)
 
-        if final_mag < 10:
+        # Progress checking
+
+        now = self.get_clock().now().nanoseconds * 1.e-9
+
+        if not self.follow_wall and final_mag < self.follow_start_mag and obstacle_mag > self.min_push:
             cross = goal_uy * push_vector_x - push_vector_y * goal_ux
             self.follow_side = 1.0 if cross >= 0 else -1.0
             self.follow_wall = True
+            self.follow_start_d = goal_mag
 
-        if self.follow_wall & (final_mag > 30):
+        if self.follow_wall and goal_mag < self.follow_start_d - self.needed_progress:
             self.follow_wall = False
 
         if self.follow_wall:
@@ -200,6 +214,7 @@ class FindVector(Node):
             final_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
+        direction_msg = Float32MultiArray()
         direction_msg.data = [float(final_mag), float(final_angle)]
         self.direction_publisher.publish(direction_msg)
 
