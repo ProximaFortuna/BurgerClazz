@@ -28,8 +28,6 @@ class FindVector(Node):
 
         self.wait_until = None
 
-        self.follow_wall_num = 20
-
         self.obstacle_radius = 2  # radius where obstacles are considered (meters)
         self.min_valid_range = 0.16  # radius where too close lidar scan points are ignored (meters)
         self.repulsion_gain = 1.0  # Gain for the repulsion vector (Increase to make the robot more sensitive to obstacles)
@@ -176,15 +174,6 @@ class FindVector(Node):
         # Calculate the final direction and magnitude
         final_angle = math.atan2(total_vector_y, total_vector_x)
         final_mag = math.hypot(total_vector_x, total_vector_y)
-
-        if(final_mag < self.follow_wall_num):
-            total_vector_x += scaled_goal_vector_y
-            total_vector_y += scaled_goal_vector_x
-            final_angle = math.atan2(total_vector_y, total_vector_x)
-            final_mag = 5 * math.hypot(total_vector_x, total_vector_y)
-            direction_msg.data = [float(final_mag), float(final_angle)]
-            self.direction_publisher.publish(direction_msg)
-            return
 
         # Create a Float32MultiArray message for the direction
         direction_msg.data = [float(final_mag), float(final_angle)]
