@@ -41,7 +41,7 @@ class ChaseObject(Node):
         # --------------------------------
 
         self.direction_angle = 0.0
-        self.direction_distance = 0.0
+        self.direction_mag = 0.0
 
         self.have_measurement = False
 
