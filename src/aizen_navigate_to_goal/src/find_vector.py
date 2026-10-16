@@ -82,15 +82,17 @@ class FindVector(Node):
             self.get_logger().warn("No goals loaded.")
             return
 
+        # Initialize message
+        direction_msg = Float32MultiArray()
+
         if self.current_goal_index >= len(self.goals):
-            direction_msg = Float32MultiArray()
             direction_msg.data = [0.0, 0.0]
             self.direction_publisher.publish(direction_msg)
             return
 
+
         if self.wait_until is not None:
             if self.get_clock().now() < self.wait_until:
-                direction_msg = Float32MultiArray()
                 direction_msg.data = [0.0, 0.0]
                 self.direction_publisher.publish(direction_msg)
                 return
@@ -153,7 +155,10 @@ class FindVector(Node):
             # If we are at the last goal, don't do anything anymore
             if self.current_goal_index >= len(self.goals):
                 self.get_logger().info("All goals reached.")
+                direction_msg.data = [0, 0]
+                self.direction_publisher.publish(direction_msg)
                 return
+
             # If not the last goal, wait 10 seconds and then continue to the next goal
             else:
                 self.wait_until = self.get_clock().now() + Duration(seconds=10)
@@ -171,7 +176,6 @@ class FindVector(Node):
         final_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
-        direction_msg = Float32MultiArray()
         direction_msg.data = [float(final_mag), float(final_angle)]
         self.direction_publisher.publish(direction_msg)
 
