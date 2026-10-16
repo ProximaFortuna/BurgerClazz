@@ -29,7 +29,7 @@ class ChaseObject(Node):
 
         # Proportional gains
         # These are starting values and WILL need tuning.
-        self.kp_theta = 2.0
+        self.kp_theta = 0.8
         self.kp_dist = 1
 
         # Velocity saturation
