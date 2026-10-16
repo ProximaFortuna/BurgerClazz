@@ -31,8 +31,8 @@ class FindVector(Node):
         self.follow_start_d = 0.0
         self.follow_start_mag = 10
         self.min_push = 1.0
-        self.needed_progress = 0.1
-        self.follow_distance = 0.1
+        self.needed_progress = 0.2
+        self.follow_distance = 0.2
         self.keepaway_band = 0.15
 
         self.wait_until = None
