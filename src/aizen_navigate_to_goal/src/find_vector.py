@@ -29,9 +29,9 @@ class FindVector(Node):
         self.follow_side = 0.0
         self.follow_wall = False
         self.follow_start_d = 0.0
-        self.follow_start_mag = 10
+        self.follow_start_mag = 5
         self.min_push = 1.0
-        self.needed_progress = 0.3
+        self.needed_progress = 0.1
 
         self.wait_until = None
 
@@ -194,17 +194,21 @@ class FindVector(Node):
 
         # Progress checking
 
+        # Get time
         now = self.get_clock().now().nanoseconds * 1.e-9
 
+        # If we should follow wall but we aren't then start following
         if not self.follow_wall and final_mag < self.follow_start_mag and obstacle_mag > self.min_push:
             cross = goal_uy * push_vector_x - push_vector_y * goal_ux
             self.follow_side = 1.0 if cross >= 0 else -1.0
             self.follow_wall = True
             self.follow_start_d = goal_mag
 
+        # If we have made enough progress then stop following the wall
         if self.follow_wall and goal_mag < self.follow_start_d - self.needed_progress:
             self.follow_wall = False
 
+        # If we are supposed to follow the wall, then follow a vector tangent to the wall
         if self.follow_wall and obstacle_mag > 0.03:
             tx = self.follow_side * -push_vector_y / obstacle_mag
             ty = self.follow_side * push_vector_x / obstacle_mag
