@@ -29,9 +29,11 @@ class FindVector(Node):
         self.follow_side = 0.0
         self.follow_wall = False
         self.follow_start_d = 0.0
-        self.follow_start_mag = 5
+        self.follow_start_mag = 10
         self.min_push = 1.0
         self.needed_progress = 0.1
+        self.follow_distance = 0.1
+        self.keepaway_band = 0.15
 
         self.wait_until = None
 
@@ -129,6 +131,9 @@ class FindVector(Node):
         push_vector_x = 0
         push_vector_y = 0
 
+        nearest_r = float('inf')
+        nearest_angle = 0.0
+
         # Loop through the Lidar scan range data and for ever reading that is within the range to be considered an obstacle calculate it's x and y
         # coords within the local frame. Scale by a factor that increases relevance the closer the object and add to the combined vector values.
         for i, r in enumerate(self.laser_ranges):
@@ -139,6 +144,10 @@ class FindVector(Node):
                 # Calculate the x and y coordinates of the laser scan point
                 x = r * np.cos(angle)
                 y = r * np.sin(angle)
+
+                if r < nearest_r:
+                    nearest_r = r
+                    nearest_angle = angle
 
                 # Calculate a scaling term that increases as the obstacle gets closer
                 mag = self.repulsion_gain * (1 / r - 1 / self.obstacle_radius)
@@ -209,13 +218,22 @@ class FindVector(Node):
             self.follow_wall = False
 
         # If we are supposed to follow the wall, then follow a vector tangent to the wall
-        if self.follow_wall and obstacle_mag > 0.03:
-            tx = self.follow_side * -push_vector_y / obstacle_mag
-            ty = self.follow_side * push_vector_x / obstacle_mag
-            total_vector_x = tx * self.goal_gain
-            total_vector_y = ty * self.goal_gain
-            final_angle = math.atan2(total_vector_y, total_vector_x)
-            final_mag = math.hypot(total_vector_x, total_vector_y)
+        if self.follow_wall:
+            if nearest_r < float('inf'):
+                nearest_ux = math.cos(nearest_angle)
+                nearest_uy = math.sin(nearest_angle)
+
+                tx = self.follow_side * nearest_uy
+                ty = self.follow_side * -nearest_ux
+
+                err = (nearest_r - self.follow_distance) / self.keepaway_band
+                err = max(-1.0, min(1.0, err))
+                radial = self.goal_gain * err
+
+                total_vector_x = tx * self.goal_gain + nearest_ux * radial
+                total_vector_y = ty * self.goal_gain + nearest_uy * radial
+                final_angle = math.atan2(total_vector_y, total_vector_x)
+                final_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
         direction_msg = Float32MultiArray()
