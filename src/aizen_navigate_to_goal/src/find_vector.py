@@ -118,7 +118,7 @@ class FindVector(Node):
                 total_vector_y += -y / r * mag
 
         # Get the obstacle angle and magnitude for debugging purposes
-        obstacle_angle = math.degrees(math.atan2(total_vector_y, total_vector_x)) %360
+        obstacle_angle = math.atan2(total_vector_y, total_vector_x)
         obstacle_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Get the x and y parts of the vector pointing to the current goal
@@ -162,7 +162,7 @@ class FindVector(Node):
         total_vector_y += scaled_goal_vector_y
 
         # Calculate the final direction and magnitude
-        final_angle = math.degrees(math.atan2(total_vector_y, total_vector_x)) % 360
+        final_angle = math.atan2(total_vector_y, total_vector_x)
         final_mag = math.hypot(total_vector_x, total_vector_y)
 
         # Create a Float32MultiArray message for the direction
