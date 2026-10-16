@@ -13,6 +13,7 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import LaserScan
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.duration import Duration
 import os
 from ament_index_python.packages import get_package_share_directory
 
@@ -67,6 +68,7 @@ class FindVector(Node):
         # Get the current position of the robot
         self.robot_x = data.x
         self.robot_y = data.y
+        self.robot_yaw = data.z
 
     # Main function to process lidar data
     def lidar_callback(self, msg):
@@ -123,8 +125,11 @@ class FindVector(Node):
 
         # Get the x and y parts of the vector pointing to the current goal
         goal_x, goal_y = self.goals[self.current_goal_index]
-        goal_vector_x = goal_x - self.robot_x
-        goal_vector_y = goal_y - self.robot_y
+        dx = goal_x - self.robot_x
+        dy = goal_y - self.robot_y
+        c, s = math.cos(self.robot_yaw), math.sin(self.robot_yaw)
+        goal_vector_x = c * dx + s * dy
+        goal_vector_y = -s * dx + c * dy
 
         # Get the magnitude of the goal distance for tolerance comparison
         goal_mag = math.hypot(goal_vector_x, goal_vector_y)
@@ -143,7 +148,7 @@ class FindVector(Node):
 
             # If not the last goal, wait 10 seconds and then continue to the next goal
             else:
-                wait_time = 10  # seconds
+                self.wait_until = self.get_clock().now() + Duration(seconds=10)
                 self.get_logger().info(f"Waiting for {wait_time} seconds before moving to the next goal...")
                 direction_msg.data = [0, 0]
                 self.direction_publisher.publish(direction_msg)
