@@ -31,15 +31,15 @@ class FindVector(Node):
         self.follow_start_d = 0.0 # What distance we started following wall
         self.follow_start_mag = 10 # What potential field net magnitude we start following wall bellow
         self.min_push = 0.3 # Minimum push vector to be allowed to follow something
-        self.needed_progress = 0.3 # Progress that must be made before switching back to potential field navigation
-        self.follow_distance = 0.15 # Distance to follow the wall at
+        self.needed_progress = 0.35 # Progress that must be made before switching back to potential field navigation
+        self.follow_distance = 0.2 # Distance to follow the wall at
         self.keepaway_band = 0.15 # Gain term for the P controller on wall distance
 
         self.wait_until = None # Variable for causing waits to happen
 
-        self.obstacle_radius = 1  # radius where obstacles are considered (meters)
+        self.obstacle_radius = 1.5  # radius where obstacles are considered (meters)
         self.min_valid_range = 0.16  # radius where too close lidar scan points are ignored (meters)
-        self.repulsion_gain = 1.0  # Gain for the repulsion vector (Increase to make the robot more sensitive to obstacles)
+        self.repulsion_gain = 0.5  # Gain for the repulsion vector (Increase to make the robot more sensitive to obstacles)
 
         self.goal_tol = 0.05 # Tolerance for reaching the goal (meters)
 
