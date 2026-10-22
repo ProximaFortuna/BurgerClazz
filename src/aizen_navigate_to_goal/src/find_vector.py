@@ -39,7 +39,7 @@ class FindVector(Node):
 
         self.obstacle_radius = 1.5  # radius where obstacles are considered (meters)
         self.min_valid_range = 0.16  # radius where too close lidar scan points are ignored (meters)
-        self.repulsion_gain = 0.5  # Gain for the repulsion vector (Increase to make the robot more sensitive to obstacles)
+        self.repulsion_gain = 0.25  # Gain for the repulsion vector (Increase to make the robot more sensitive to obstacles)
 
         self.goal_tol = 0.05 # Tolerance for reaching the goal (meters)
 
