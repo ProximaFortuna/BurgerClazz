@@ -172,22 +172,21 @@ class StudentRecoveryServer(Node):
         # STEP 2: Compute recovery waypoint
         # --------------------------------------------------
 
-        # TODO 1: Choose a recovery waypoint.
-        #
-        # Replace the placeholder values below with your recovery-planning
-        # algorithm. Your algorithm should select a safe, reachable waypoint
-        # that helps the robot recover from being stuck.
-        #
-        # Hints:
-        #   - The waypoint coordinates should be expressed in the 'map' frame.
-        #   - Consider how you would avoid choosing the robot's current location
-        #     or a location that is likely to be blocked.
-        #   - For this lab, you may start with a simple fixed waypoint, then
-        #     extend the logic using information available in `request`.
-        #
-        # TODO 2: Set recovery_x and recovery_y to your chosen waypoint.
-        recovery_x = ...  # TODO: x-coordinate (meters)
-        recovery_y = ...  # TODO: y-coordinate (meters)
+        if self.prev_goal_pose is not None:
+            target = self.prev_goal_pose
+            chosen_strat = 'last known goal'
+        elif self.start_pose is not None:
+            target = self.start_pose
+            chosen_strat = 'start pose'
+        else:
+            self.get_logger().error(
+                'No previous goal or start pose available for recovery'
+            )
+            response.success = False
+            return response
+
+        recovery_x = target.position.x
+        recovery_y = target.position.y
 
         response.recovery_pose.header.frame_id = 'map'
         response.recovery_pose.header.stamp = (
@@ -207,8 +206,6 @@ class StudentRecoveryServer(Node):
         # STEP 3: Return recovery waypoint
         # --------------------------------------------------
 
-        # TODO 3: Set response.success based on whether a valid recovery
-        # waypoint was found. Do not report success if planning failed.
         response.success = True
 
         self.get_logger().info(
