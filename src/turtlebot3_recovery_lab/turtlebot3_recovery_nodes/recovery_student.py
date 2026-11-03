@@ -163,6 +163,23 @@ class StudentRecoveryServer(Node):
         # recovery point was found
         # ---------------------------------------------------
 
+        sound_request = Sound.Request()
+        sound_request.value = 4
+
+        try:
+            future = self.sound_client.call_async(sound_request)
+            future.add_done_callback(self.sound_response_callback)
+        
+            self.get_logger().info(
+                'Sent ERROR sound request to TurtleBot3'
+            )
+        
+        except Exception as exc:
+            self.get_logger().error(
+                f'Failed to send sound request: {exc}'
+            )
+        
+
         return response
 
 
