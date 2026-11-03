@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from geometry_msgs.msg import PoseStamped
-from nav2_simple_commander.robot_navigator import BasicNavigator
+from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 import rclpy
 import math
 import time
@@ -19,9 +19,8 @@ def make_goal(x, y, theta, navigator):
     goal.header.stamp = navigator.get_clock().now().to_msg()
     goal.pose.position.x = float(x)
     goal.pose.position.y = float(y)
-    yaw = math.radians(theta)
-    goal.pose.orientation.z = math.sin(yaw / 2.0)
-    goal.pose.orientation.w = math.cos(yaw / 2.0)
+    goal.pose.orientation.z = math.sin(theta / 2.0)
+    goal.pose.orientation.w = math.cos(theta / 2.0)
     return goal
 
 def main():
@@ -41,16 +40,16 @@ def main():
     while not navigator.isTaskComplete():
         feedback = navigator.getFeedback()
         if feedback:
-            print(f"Distance remaining: {feedback.distance_remaining:.2f} meters")
+            print(f"Executing current goal: {feedback.current_waypoint + 1}/{len(goals)}")
         time.sleep(0.5)
 
     result = navigator.getResult()
-    if result == BasicNavigator.Result.SUCCEEDED:
+    if result == TaskResult.SUCCEEDED:
         print("Goal reached successfully!")
     else:
         print("Failed to reach the goal.")
 
     rclpy.shutdown()
 
-    if __name__ == '__main__':
-        main()
+if __name__ == '__main__':
+    main()
