@@ -32,22 +32,22 @@ def main():
     navigator.waitUntilNav2Active()
     print("Nav2 is active and ready to receive goals.")
 
-    goals = [make_goal(x, y, theta, navigator) for x, y, theta in GOALS]
+    for i, (x, y, theta) in enumerate(GOALS):
+        goal = make_goal(x, y, theta, navigator)
+        navigator.goToPose(goal)
+        print(f"Sent goal {i + 1}: ({x}, {y}, {theta})")
 
-    navigator.followWaypoints(goals)
+        while not navigator.isTaskComplete():
+            feedback = navigator.getFeedback()
+            if feedback:
+                print(f"Distance remaining: {feedback.distance_remaining:.2f} meters")
+            time.sleep(1)
 
-    # Wait for the robot to reach the goal
-    while not navigator.isTaskComplete():
-        feedback = navigator.getFeedback()
-        if feedback:
-            print(f"Executing current goal: {feedback.current_waypoint + 1}/{len(goals)}")
-        time.sleep(0.5)
-
-    result = navigator.getResult()
-    if result == TaskResult.SUCCEEDED:
-        print("Goal reached successfully!")
-    else:
-        print("Failed to reach the goal.")
+        result = navigator.getResult()
+        if result == TaskResult.SUCCEEDED:
+            print("Goal reached successfully!")
+        else:
+            print("Failed to reach the goal.")
 
     rclpy.shutdown()
 
