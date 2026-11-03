@@ -5,6 +5,9 @@ from rclpy.node import Node
 
 from turtlebot3_msgs.srv import Sound
 from turtlebot3_recovery_lab.srv import DivertRobot
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+from geometry_msgs.msg import PoseWithCovarianceStamped, Pose
+from action_msgs.msg import GoalStatusArray, GoalStatus
 
 
 class StudentRecoveryServer(Node):
@@ -22,6 +25,30 @@ class StudentRecoveryServer(Node):
             DivertRobot,
             '/divert_robot',
             self.handle_recovery
+        )
+
+        self.current_pose = None
+        self.start_pose = None
+        self.prev_goal_pose = None
+        self.seen_goals = set()
+
+        amcl_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL
+        )
+        self.pose_sub = self.create_subscription(
+            PoseWithCovarianceStamped,
+            '/amcl_pose',
+            self.pose_callback,
+            amcl_qos
+        )
+
+        self.goal_state_sub = self.create_subscription(
+            GoalStatusArray,
+            '/navigate_to_pose/_action/status',
+            self.goal_status_callback,
+            10
         )
 
         self.get_logger().info(
@@ -89,6 +116,37 @@ class StudentRecoveryServer(Node):
             self.get_logger().error(
                 f'Sound service call failed: {exc}'
             )
+
+    def pose_callback(self, msg):
+        pose = Pose()
+        pose.position = msg.pose.pose.position
+        pose.orientation = msg.pose.pose.orientation
+        self.current_pose = pose
+
+        if self.start_pose is None:
+            self.start_pose = pose
+            self.get_logger().info(
+                f'Initial robot pose recorded: '
+                f'({pose.position.x:.2f}, {pose.position.y:.2f})'
+            )
+
+    def goal_status_callback(self, msg):
+        for status in msg.status_list:
+            if status.status != GoalStatus.STATUS_SUCCEEDED:
+                continue
+
+            goal_id = bytes(status.goal_info.goal_id.vvid)
+            if goal_id in self.seen_goals:
+                continue
+            self.seen_goals.add(goal_id)
+
+            if self.current_pose is not None:
+                self.prev_goal_pose = self.current_pose
+                self.get_logger().info(
+                    f'Goal reached: '
+                    f'({self.prev_goal_pose.position.x:.2f}, '
+                    f'{self.prev_goal_pose.position.y:.2f})'
+                )
 
     def handle_recovery(self, request, response):
         """
