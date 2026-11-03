@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from geometry_msgs.msg import PoseStamped
 from nav2_simple_commander.robot_navigator import BasicNavigator
 import rclpy
@@ -26,8 +28,10 @@ def main():
     rclpy.init()
     navigator = BasicNavigator()
 
+    print("Waiting for Nav2 to fully activate...")
     # Wait for navigation to fully activate
     navigator.waitUntilNav2Active()
+    print("Nav2 is active and ready to receive goals.")
 
     goals = [make_goal(x, y, theta, navigator) for x, y, theta in GOALS]
 
