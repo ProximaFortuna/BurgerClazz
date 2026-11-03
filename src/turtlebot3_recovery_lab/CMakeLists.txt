@@ -69,7 +69,7 @@ install(DIRECTORY config/
 )
 
 install(PROGRAMS
-  turtlebot3_recovery_nodes/recovery.py
+  turtlebot3_recovery_nodes/recovery_student.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

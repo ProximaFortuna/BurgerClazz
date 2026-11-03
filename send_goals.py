@@ -6,9 +6,9 @@ import time
 
 # x, y, theta (in radians) for each goal
 GOALS = [
-    (1.0, 0.0, 0.0),  # Goal1
-    (-1.0, 0.0, 0.0), # Goal2
-    (0.0, 1.0, 0.0),  # Goal3
+    (0.126, 0.708, 0.0),  # Goal1
+    (1.93, 0.163, 0.0), # Goal2
+    (1.24, 0.114, 0.0),  # Goal3
 ]
 
 def make_goal(x, y, theta, navigator):
