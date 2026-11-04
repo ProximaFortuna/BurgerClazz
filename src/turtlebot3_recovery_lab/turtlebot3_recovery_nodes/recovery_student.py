@@ -135,7 +135,7 @@ class StudentRecoveryServer(Node):
             if status.status != GoalStatus.STATUS_SUCCEEDED:
                 continue
 
-            goal_id = bytes(status.goal_info.goal_id.vvid)
+            goal_id = bytes(status.goal_info.goal_id.uuid)
             if goal_id in self.seen_goals:
                 continue
             self.seen_goals.add(goal_id)
@@ -226,7 +226,7 @@ class StudentRecoveryServer(Node):
                 future.add_done_callback(self.sound_response_callback)
         
                 self.get_logger().info(
-                    'Sent ERROR sound request to TurtleBot3'
+                    'Sent BUTTON1 sound request to TurtleBot3'
                 )
         
             except Exception as exc:

@@ -13,14 +13,17 @@ GOALS = [
     (1.24, 0.114, 0.0),  # Goal3
 ]
 
-def make_goal(x, y, theta, navigator):
+def make_goal(x, y, navigator):
     goal = PoseStamped()
     goal.header.frame_id = 'map'
     goal.header.stamp = navigator.get_clock().now().to_msg()
     goal.pose.position.x = float(x)
     goal.pose.position.y = float(y)
-    goal.pose.orientation.z = math.sin(theta / 2.0)
-    goal.pose.orientation.w = math.cos(theta / 2.0)
+    goal.pose.orientation.z = 0.0
+    goal.pose.orientation.w = 0.0
+    goal.pose.orientation.x = 0.0
+    goal.pose.orientation.y = 0.0
+
     return goal
 
 def main():
@@ -33,7 +36,7 @@ def main():
     print("Nav2 is active and ready to receive goals.")
 
     for i, (x, y, theta) in enumerate(GOALS):
-        goal = make_goal(x, y, theta, navigator)
+        goal = make_goal(x, y, navigator)
         navigator.goToPose(goal)
         print(f"Sent goal {i + 1}: ({x}, {y}, {theta})")
 
@@ -41,7 +44,7 @@ def main():
             feedback = navigator.getFeedback()
             if feedback:
                 print(f"Distance remaining: {feedback.distance_remaining:.2f} meters")
-            time.sleep(1)
+            time.sleep(0.1)
 
         result = navigator.getResult()
         if result == TaskResult.SUCCEEDED:
