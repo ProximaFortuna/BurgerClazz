@@ -8,9 +8,9 @@ import time
 
 # x, y, theta (in radians) for each goal
 GOALS = [
-    (0.126, 0.708, 0.0),  # Goal1
-    (1.93, 0.163, 0.0), # Goal2
-    (1.24, 0.114, 0.0),  # Goal3
+    (2.22, 0.854, 0.0), # Goal1
+    (1.92, 0.137, 0.0),  # Goal2
+    (0.0506, 1.3, 0.0) # Goal3
 ]
 
 def make_goal(x, y, theta, navigator):
@@ -24,6 +24,8 @@ def make_goal(x, y, theta, navigator):
 
     return goal
 
+MAX_RETRIES = 3  # Maximum number of retries for each goal
+
 def main():
     rclpy.init()
     navigator = BasicNavigator()
@@ -34,22 +36,32 @@ def main():
     print("Nav2 is active and ready to receive goals.")
 
     for i, (x, y, theta) in enumerate(GOALS):
-        goal = make_goal(x, y, theta, navigator)
-        navigator.goToPose(goal)
-        print(f"Sent goal {i + 1}: ({x}, {y}, {theta})")
+        for attempt in range(MAX_RETRIES):
+            print(f"Attempt {attempt + 1} for goal {i + 1}: ({x}, {y}, {theta})")
+            goal = make_goal(x, y, theta, navigator)
+            navigator.goToPose(goal)
+            print(f"Sent goal {i + 1}: ({x}, {y}, {theta})")
 
-        while not navigator.isTaskComplete():
-            feedback = navigator.getFeedback()
-            if feedback:
-                print(f"Distance remaining: {feedback.distance_remaining:.2f} meters")
-            time.sleep(0.1)
+            while not navigator.isTaskComplete():
+                feedback = navigator.getFeedback()
+                if feedback:
+                    print(f"Distance remaining: {feedback.distance_remaining:.2f} meters")
+                time.sleep(0.1)
 
-        result = navigator.getResult()
-        if result == TaskResult.SUCCEEDED:
-            print("Goal reached successfully!")
-        else:
-            print("Failed to reach the goal.")
+            result = navigator.getResult()
+            if result == TaskResult.SUCCEEDED:
+                print("Goal reached successfully!")
+                break
 
+            else:
+                print("Failed to reach the goal.")
+
+                if attempt < MAX_RETRIES - 1:
+                    print("Retrying...")
+                    time.sleep(1)
+
+                else:
+                    print("Max retries reached. Moving to the next goal.")
     rclpy.shutdown()
 
 if __name__ == '__main__':
